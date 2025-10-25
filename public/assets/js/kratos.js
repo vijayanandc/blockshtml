@@ -81,6 +81,15 @@ function createNodeInput(node) {
     const button = document.createElement("button");
     button.type = "submit";
     button.className = "btn btn-primary w-100";
+    if (attr.name) {
+      button.name = attr.name;
+    }
+    if (attr.value) {
+      button.value = attr.value;
+    }
+    if (attr.disabled) {
+      button.disabled = Boolean(attr.disabled);
+    }
     button.textContent = node.meta?.label?.text ?? attr.value ?? "Continue";
     return button;
   }
