@@ -161,11 +161,14 @@ function renderFlowForm(container, flow, submitLabel) {
     return aOrder - bOrder;
   });
 
+  let primaryButtonAssigned = false;
+
   nodes.forEach((node) => {
     const element = createNodeInput(node);
     if (!element) return;
-    if (element.tagName === "BUTTON" && submitLabel) {
+    if (element.tagName === "BUTTON" && submitLabel && !primaryButtonAssigned) {
       element.textContent = submitLabel;
+      primaryButtonAssigned = true;
     }
     form.appendChild(element);
   });
