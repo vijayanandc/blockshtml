@@ -1,0 +1,82 @@
+:root {
+  --kratos-primary: #0d6efd;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.navbar-brand {
+  letter-spacing: 0.04em;
+}
+
+.card {
+  border-radius: 1rem;
+}
+
+#form-container form .form-label {
+  font-weight: 600;
+  color: #344054;
+}
+
+#form-container form .form-control:focus {
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--kratos-primary), #4f46e5);
+  border: none;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, #0b5ed7, #4338ca);
+}
+
+.form-text {
+  font-size: 0.875rem;
+}
+
+.placeholder-lg {
+  min-height: 1.75rem;
+}
+
+@media (max-width: 767px) {
+  .card-body {
+    padding: 2.5rem 1.75rem;
+  }
+}
+
+.info-tile {
+  border: 1px solid rgba(13, 110, 253, 0.15);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6c757d;
+}
+
+.info-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.btn-outline-secondary {
+  border-width: 2px;
+}
