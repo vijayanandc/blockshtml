@@ -1,6 +1,15 @@
-const KRATOS_PUBLIC_URL = "http://127.0.0.1:4433";
-const APPBLOCKS_BASE_URL =
-  (typeof window !== "undefined" && window.APPBLOCKS_BASE_URL) || "https://appblocks.in";
+const APPBLOCKS_BACKEND_BASE_URL =
+  (typeof window !== "undefined" &&
+    (window.APPBLOCKS_BACKEND_BASE_URL || window.APPBLOCKS_BASE_URL)) ||
+  "https://appblocks.in";
+
+const APPBLOCKS_ACCOUNTS_BASE_URL =
+  (typeof window !== "undefined" &&
+    (window.APPBLOCKS_ACCOUNTS_BASE_URL || window.KRATOS_PUBLIC_URL)) ||
+  "https://accounts.appblocks.in";
+
+const KRATOS_PUBLIC_URL =
+  (typeof window !== "undefined" && window.KRATOS_PUBLIC_URL) || APPBLOCKS_ACCOUNTS_BASE_URL;
 
 function getSearchParam(name) {
   return new URL(window.location.href).searchParams.get(name);
@@ -12,7 +21,7 @@ function redirectToFlow(flowType, options = {}) {
 }
 
 function buildAppblocksUrl(path, params = {}) {
-  const url = new URL(path, APPBLOCKS_BASE_URL);
+  const url = new URL(path, APPBLOCKS_BACKEND_BASE_URL);
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null) {
       return;
@@ -245,7 +254,9 @@ async function getLogoutUrl() {
 
 window.KratosHelpers = {
   KRATOS_PUBLIC_URL,
-  APPBLOCKS_BASE_URL,
+  APPBLOCKS_BACKEND_BASE_URL,
+  APPBLOCKS_ACCOUNTS_BASE_URL,
+  APPBLOCKS_BASE_URL: APPBLOCKS_BACKEND_BASE_URL,
   getSearchParam,
   fetchFlow,
   redirectToFlow,
