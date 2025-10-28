@@ -131,6 +131,7 @@ main {
   padding: 0.5rem;
   background-color: #fff;
   box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.05);
+  overflow-x: auto;
 }
 
 #module-data .table > :not(caption) > * > * {
