@@ -20,6 +20,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   let moduleSubtitleElement = null;
   let moduleDataElement = null;
 
+  function setModulesPageActive(isActive) {
+    document.body.classList.toggle("modules-page-active", Boolean(isActive));
+
+    if (!sessionContainer) {
+      return;
+    }
+
+    const mainRow = sessionContainer.closest(".row");
+    if (mainRow) {
+      mainRow.classList.toggle("modules-page-row", Boolean(isActive));
+    }
+
+    const column = sessionContainer.closest(".col-12");
+    if (column) {
+      column.classList.toggle("modules-page-col", Boolean(isActive));
+    }
+
+    const card = sessionContainer.closest(".card");
+    if (card) {
+      card.classList.toggle("modules-page-card", Boolean(isActive));
+    }
+
+    const cardBody = sessionContainer.closest(".card-body");
+    if (cardBody) {
+      cardBody.classList.toggle("modules-page-card-body", Boolean(isActive));
+    }
+
+    sessionContainer.classList.toggle("modules-page-content", Boolean(isActive));
+  }
+
   function setNavbarOrgName(name = DEFAULT_BRAND_NAME) {
     if (!navbarBrand) return;
     navbarBrand.textContent = name || DEFAULT_BRAND_NAME;
@@ -56,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!sessionContainer) return;
     selectedOrg = null;
     setNavbarOrgName(DEFAULT_BRAND_NAME);
+    setModulesPageActive(false);
     sessionContainer.innerHTML = `
       <div class="text-center w-100 py-5">
         <h1 class="display-6 fw-semibold mb-3">Welcome!</h1>
@@ -125,6 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderPrimaryLoading(message) {
     if (!sessionContainer) return;
+    setModulesPageActive(false);
     sessionContainer.innerHTML = `
       <div class="d-flex flex-column align-items-center justify-content-center py-5 gap-3">
         <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
@@ -217,6 +249,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     clearAlerts();
     updateChangeOrgMenuState(Boolean(selectedOrg));
     setNavbarOrgName(selectedOrg?.org_name ?? DEFAULT_BRAND_NAME);
+    setModulesPageActive(false);
 
     sessionContainer.innerHTML = `
       <div class="d-flex flex-column gap-4 w-100">
@@ -283,6 +316,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     } catch (error) {
       handleAppblocksError(error, "Unable to load modules.");
+      setModulesPageActive(false);
       sessionContainer.innerHTML = `
         <div class="text-center py-5">
           <p class="text-muted mb-4">We ran into a problem while loading modules for ${org.org_name}.</p>
@@ -316,32 +350,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!sessionContainer) return;
     setNavbarOrgName(org.org_name);
     updateChangeOrgMenuState(true);
+    setModulesPageActive(true);
 
     sessionContainer.innerHTML = `
-      <div class="d-flex flex-column gap-4 w-100">
-        <div class="row g-4">
-          <div class="col-12 col-lg-3">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-header bg-white py-3">
-                <div class="d-flex flex-column">
-                  <h2 class="h6 mb-1 text-uppercase text-muted">Modules</h2>
-                  <span class="text-muted small">Timezone: ${org.timezone}</span>
-                </div>
-              </div>
-              <div class="list-group list-group-flush" id="modules-list"></div>
+      <div class="modules-layout" id="modules-layout">
+        <aside class="modules-sidebar" id="modules-sidebar" aria-label="Modules navigation">
+          <div class="modules-sidebar-inner">
+            <div class="modules-sidebar-header">
+              <span class="modules-sidebar-title">Modules</span>
+              <span class="modules-sidebar-meta">Timezone: ${org.timezone}</span>
+            </div>
+            <div class="list-group list-group-flush" id="modules-list"></div>
+          </div>
+        </aside>
+        <div class="modules-content">
+          <div class="modules-content-header">
+            <button class="modules-menu-toggle d-lg-none" type="button" id="modules-menu-toggle" aria-controls="modules-sidebar" aria-expanded="false" aria-label="Toggle modules navigation">
+              <span class="modules-menu-icon"></span>
+            </button>
+            <div class="modules-content-titles">
+              <h1 class="modules-title" id="module-title"></h1>
+              <p class="modules-subtitle text-muted" id="module-subtitle"></p>
             </div>
           </div>
-          <div class="col-12 col-lg-9">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-body p-4 d-flex flex-column gap-3">
-                <div>
-                  <h2 class="h4 fw-semibold mb-1" id="module-title"></h2>
-                  <p class="text-muted mb-0" id="module-subtitle"></p>
-                </div>
-                <div id="module-data" class="flex-grow-1 d-flex flex-column"></div>
-              </div>
-            </div>
-          </div>
+          <div id="module-data" class="modules-data"></div>
         </div>
       </div>
     `;
@@ -350,6 +382,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     moduleTitleElement = document.getElementById("module-title");
     moduleSubtitleElement = document.getElementById("module-subtitle");
     moduleDataElement = document.getElementById("module-data");
+
+    const sidebar = document.getElementById("modules-sidebar");
+    const toggleButton = document.getElementById("modules-menu-toggle");
+    const desktopQuery = typeof window.matchMedia === "function" ? window.matchMedia("(min-width: 992px)") : null;
+
+    const closeSidebarOnMobile = () => {
+      if (!sidebar || !toggleButton) return;
+      const isDesktop = desktopQuery ? desktopQuery.matches : window.innerWidth >= 992;
+      if (isDesktop) return;
+      if (sidebar.classList.contains("is-open")) {
+        sidebar.classList.remove("is-open");
+        toggleButton.setAttribute("aria-expanded", "false");
+      }
+    };
+
+    if (toggleButton && sidebar) {
+      toggleButton.addEventListener("click", () => {
+        const isOpen = sidebar.classList.toggle("is-open");
+        toggleButton.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      if (desktopQuery) {
+        const handleDesktopChange = (event) => {
+          if (event.matches) {
+            sidebar.classList.remove("is-open");
+            toggleButton.setAttribute("aria-expanded", "false");
+          }
+        };
+
+        handleDesktopChange(desktopQuery);
+        if (typeof desktopQuery.addEventListener === "function") {
+          desktopQuery.addEventListener("change", handleDesktopChange);
+        } else if (typeof desktopQuery.addListener === "function") {
+          desktopQuery.addListener(handleDesktopChange);
+        }
+      }
+    }
 
     if (!modulesListElement || !moduleDataElement || !moduleTitleElement || !moduleSubtitleElement) {
       return;
@@ -376,7 +445,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           <small class="text-muted">${module.api_name}</small>
         </div>
       `;
-      button.addEventListener("click", () => activateModule(module));
+      button.addEventListener("click", () => {
+        activateModule(module);
+        closeSidebarOnMobile();
+      });
       modulesListElement.appendChild(button);
     });
 
