@@ -16,6 +16,31 @@ main {
   letter-spacing: 0.04em;
 }
 
+.dropdown-toggle-hide-caret::after {
+  display: none;
+}
+
+.navbar .dropdown-toggle {
+  color: #fff;
+}
+
+.navbar .dropdown-toggle:hover,
+.navbar .dropdown-toggle:focus {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.navbar .dropdown-menu {
+  min-width: 14rem;
+  box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.15);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.navbar .dropdown-menu .dropdown-header {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
 .card {
   border-radius: 1rem;
 }
@@ -79,4 +104,29 @@ main {
 
 .btn-outline-secondary {
   border-width: 2px;
+}
+
+#modules-list {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+#modules-list .list-group-item {
+  border-width: 0 0 1px 0;
+}
+
+#modules-list .list-group-item:last-child {
+  border-bottom: 0;
+}
+
+#module-data .table-responsive {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 0.5rem;
+  background-color: #fff;
+  box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.05);
+}
+
+#module-data .table > :not(caption) > * > * {
+  vertical-align: middle;
 }
