@@ -107,8 +107,14 @@ main {
 }
 
 #modules-list {
-  max-height: 100%;
+  flex: 1 1 auto;
+  max-height: none;
   overflow-y: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background-color: #fff;
+  box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.05);
+  margin: 0;
 }
 
 #modules-list .list-group-item {
@@ -129,4 +135,217 @@ main {
 
 #module-data .table > :not(caption) > * > * {
   vertical-align: middle;
+}
+
+.modules-layout {
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  min-height: calc(100vh - 18rem);
+  position: relative;
+}
+
+.modules-sidebar {
+  flex: 0 0 300px;
+  max-width: 320px;
+  padding-right: 2rem;
+  border-right: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.modules-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.modules-sidebar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.modules-sidebar-title {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.modules-sidebar-meta {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.modules-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.modules-content-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.modules-content-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.modules-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modules-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.modules-data {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modules-menu-toggle {
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #1f2937;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modules-menu-toggle:hover,
+.modules-menu-toggle:focus {
+  background-color: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.2);
+}
+
+.modules-menu-toggle:focus-visible {
+  outline: none;
+}
+
+.modules-menu-icon {
+  position: relative;
+  display: block;
+  width: 1.35rem;
+  height: 1px;
+  background-color: currentColor;
+}
+
+.modules-menu-icon::before,
+.modules-menu-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: currentColor;
+}
+
+.modules-menu-icon::before {
+  top: -6px;
+}
+
+.modules-menu-icon::after {
+  top: 6px;
+}
+
+body.modules-page-active main.container {
+  max-width: 100%;
+}
+
+.modules-page-row {
+  margin: 0 !important;
+}
+
+.modules-page-row > .modules-page-col {
+  padding: 0 !important;
+  max-width: 100%;
+  flex: 0 0 100%;
+}
+
+.modules-page-card {
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.modules-page-card-body {
+  padding: 0 !important;
+  background-color: transparent;
+}
+
+#session-content.modules-page-content {
+  gap: 0 !important;
+}
+
+@media (max-width: 1199.98px) {
+  .modules-layout {
+    min-height: calc(100vh - 14rem);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .modules-layout {
+    flex-direction: column;
+    gap: 1.5rem;
+    min-height: calc(100vh - 12rem);
+  }
+
+  .modules-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    padding: 1.5rem;
+    border-right: none;
+    border-radius: 0.75rem;
+    background-color: #fff;
+    box-shadow: 0 1.5rem 3rem rgba(15, 23, 42, 0.18);
+    transform: translateX(-105%);
+    transition: transform 0.3s ease;
+    max-width: min(320px, 85vw);
+    width: min(320px, 85vw);
+    z-index: 20;
+  }
+
+  .modules-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .modules-sidebar-inner {
+    gap: 1rem;
+  }
+
+  #modules-list {
+    box-shadow: none;
+  }
+
+  .modules-menu-toggle {
+    display: inline-flex;
+  }
+
+  .modules-content {
+    padding-top: 0.5rem;
+  }
 }
