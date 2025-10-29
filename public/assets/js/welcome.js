@@ -20,6 +20,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   let moduleSubtitleElement = null;
   let moduleDataElement = null;
 
+  const TIMEZONE_OPTIONS = [
+    { value: "UTC", label: "UTC" },
+    { value: "America/New_York", label: "America/New_York (GMT-05:00)" },
+    { value: "America/Los_Angeles", label: "America/Los_Angeles (GMT-08:00)" },
+    { value: "Europe/London", label: "Europe/London (GMT+00:00)" },
+    { value: "Europe/Berlin", label: "Europe/Berlin (GMT+01:00)" },
+    { value: "Asia/Kolkata", label: "Asia/Kolkata (Asia/Calcutta)" },
+    { value: "Asia/Singapore", label: "Asia/Singapore (GMT+08:00)" },
+    { value: "Australia/Sydney", label: "Australia/Sydney (GMT+10:00)" }
+  ];
+
   function setModulesPageActive(isActive) {
     document.body.classList.toggle("modules-page-active", Boolean(isActive));
 
@@ -175,14 +186,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function fetchAppblocks(path, options = {}) {
-    const { headers = {}, params } = options;
+    const { headers = {}, params, method = "GET", body, ...rest } = options;
     const url = buildAppblocksUrl(path, params);
-    const response = await fetch(url, {
+    const fetchOptions = {
+      method,
       headers: {
         Accept: "application/json",
         ...headers
+      },
+      ...rest
+    };
+
+    if (body !== undefined) {
+      fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
+      if (!fetchOptions.headers["Content-Type"]) {
+        fetchOptions.headers["Content-Type"] = "application/json";
       }
-    });
+    }
+
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       const error = new Error(`Request failed with status ${response.status}`);
@@ -232,16 +254,108 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (!Array.isArray(organizations) || organizations.length === 0) {
-      sessionContainer.innerHTML = `
-        <div class="text-center py-5">
-          <h2 class="h4 fw-semibold mb-2">No organizations found</h2>
-          <p class="text-muted mb-4">Your account is not associated with any organizations yet.</p>
-        </div>
-      `;
+      renderOrgCreation();
       return;
     }
 
     renderOrgSelection(organizations);
+  }
+
+  function renderOrgCreation() {
+    if (!sessionContainer) return;
+
+    clearAlerts();
+    selectedOrg = null;
+    setNavbarOrgName(DEFAULT_BRAND_NAME);
+    setModulesPageActive(false);
+    updateChangeOrgMenuState(false);
+
+    sessionContainer.innerHTML = `
+      <div class="d-flex flex-column gap-4 w-100">
+        <div>
+          <h1 class="h3 fw-semibold mb-2">Create your organization</h1>
+          <p class="text-muted mb-0">Set up your first organization to start exploring modules.</p>
+        </div>
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-4 p-md-5">
+            <form class="d-flex flex-column gap-4" id="org-creation-form" novalidate>
+              <div>
+                <label class="form-label fw-semibold" for="org-name">Organization name</label>
+                <input type="text" class="form-control form-control-lg" id="org-name" name="org-name" placeholder="Acme Corp" required />
+              </div>
+              <div>
+                <label class="form-label fw-semibold" for="org-timezone">Time zone</label>
+                <select class="form-select form-select-lg" id="org-timezone" name="org-timezone" required>
+                  ${TIMEZONE_OPTIONS.map((tz, index) => `<option value="${tz.value}"${index === 0 ? " selected" : ""}>${tz.label}</option>`).join("")}
+                </select>
+              </div>
+              <div class="d-flex flex-column flex-sm-row gap-3">
+                <button type="submit" class="btn btn-primary btn-lg" id="create-org-btn">Create organization</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const form = document.getElementById("org-creation-form");
+    const nameInput = document.getElementById("org-name");
+    const timezoneSelect = document.getElementById("org-timezone");
+    const submitButton = document.getElementById("create-org-btn");
+
+    if (!form || !nameInput || !timezoneSelect || !submitButton) {
+      return;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearAlerts();
+
+      const orgName = nameInput.value.trim();
+      const timezone = timezoneSelect.value;
+
+      if (!orgName) {
+        renderMessages(alerts, [{ text: "Please enter an organization name." }], "warning");
+        nameInput.focus();
+        return;
+      }
+
+      if (!timezone) {
+        renderMessages(alerts, [{ text: "Please select a time zone." }], "warning");
+        timezoneSelect.focus();
+        return;
+      }
+
+      const originalButtonText = submitButton.textContent;
+      submitButton.disabled = true;
+      submitButton.textContent = "Creating...";
+
+      try {
+        const createdOrg = await fetchAppblocks("/api/orgs", {
+          method: "POST",
+          body: {
+            org_name: orgName,
+            timezone
+          }
+        });
+
+        if (createdOrg && createdOrg.org_id) {
+          organizations = [createdOrg];
+          selectedOrg = createdOrg;
+          setNavbarOrgName(createdOrg.org_name);
+          renderPrimaryLoading("Loading modules...");
+          await loadModulesForOrg(createdOrg);
+          return;
+        }
+
+        await loadOrganizations();
+      } catch (error) {
+        handleAppblocksError(error, "Unable to create organization.", "danger");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
+    });
   }
 
   function renderOrgSelection(orgs) {
