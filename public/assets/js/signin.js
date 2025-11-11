@@ -56,13 +56,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   }
 
-  function handleSuccessfulSubmission(result = {}) {
+  function handleSuccessfulSubmission(result) {
     if (result?.session_token) {
       persistSessionToken(result.session_token);
     }
 
     const redirectTarget =
-      result.redirect_browser_to ||
+      result?.redirect_browser_to ||
       activeFlow?.return_to ||
       getSearchParam("return_to") ||
       "/";

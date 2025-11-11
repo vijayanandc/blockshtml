@@ -175,6 +175,10 @@ async function submitFlow(flowType, flowId, payload = {}, options = {}) {
 
   const sessionTokenHeader = response.headers.get("X-Session-Token");
 
+  if (sessionTokenHeader) {
+    persistSessionToken(sessionTokenHeader);
+  }
+
   if (response.status === 204) {
     if (sessionTokenHeader) {
       return { session_token: sessionTokenHeader };
@@ -408,17 +412,17 @@ function handleFlowError(flowType, error, messageTarget, onReset) {
 async function fetchSession() {
   const url = new URL("/sessions/whoami", KRATOS_PUBLIC_URL);
   const sessionToken = getSessionToken();
+  const headers = {
+    Accept: "application/json"
+  };
+
+  if (sessionToken) {
+    headers["X-Session-Token"] = sessionToken;
+  }
+
   const response = await fetch(url, {
     credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...(sessionToken
-        ? {
-            "X-Session-Token": sessionToken,
-            Authorization: `Bearer ${sessionToken}`
-          }
-        : {})
-    }
+    headers
   });
 
   const refreshedToken = response.headers.get("X-Session-Token");
