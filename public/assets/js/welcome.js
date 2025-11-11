@@ -1,5 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const { fetchSession, renderMessages, getLogoutUrl, buildAppblocksUrl } = window.KratosHelpers;
+  const {
+    fetchSession,
+    renderMessages,
+    getLogoutUrl,
+    buildAppblocksUrl,
+    getSessionToken
+  } = window.KratosHelpers;
 
   const sessionContainer = document.getElementById("session-content");
   const alerts = document.getElementById("session-alerts");
@@ -196,6 +202,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
       ...rest
     };
+
+    const sessionToken = typeof getSessionToken === "function" ? getSessionToken() : null;
+
+    if (sessionToken && !fetchOptions.headers["X-Session-Token"]) {
+      fetchOptions.headers["X-Session-Token"] = sessionToken;
+    }
 
     if (body !== undefined) {
       fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
