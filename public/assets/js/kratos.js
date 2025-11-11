@@ -505,10 +505,23 @@ async function fetchSession() {
 
 async function getLogoutUrl() {
   const url = new URL("/self-service/logout/browser", KRATOS_PUBLIC_URL);
+  let headers = normalizeHeaders({ Accept: "application/json" });
+  headers = applySessionToken(headers);
+
   const response = await fetch(url, {
     credentials: "include",
-    headers: { Accept: "application/json" }
+    headers
   });
+
+  const sessionTokenHeader = response.headers.get("X-Session-Token");
+
+  if (response.status === 401) {
+    clearSessionToken();
+    if (typeof window !== "undefined") {
+      return "/signin";
+    }
+    return null;
+  }
 
   if (!response.ok) {
     const error = new Error("Unable to fetch logout URL");
@@ -516,9 +529,26 @@ async function getLogoutUrl() {
     throw error;
   }
 
-  const data = await response.json();
+  if (sessionTokenHeader) {
+    persistSessionToken(sessionTokenHeader);
+  }
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  const logoutUrl =
+    data?.logout_url ||
+    (data?.logout_token
+      ? `${KRATOS_PUBLIC_URL}/self-service/logout?token=${encodeURIComponent(data.logout_token)}`
+      : null);
+
   clearSessionToken();
-  return data.logout_url;
+
+  return logoutUrl || `${KRATOS_PUBLIC_URL}/self-service/logout/browser`;
 }
 
 window.KratosHelpers = {
