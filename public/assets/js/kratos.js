@@ -20,6 +20,90 @@ function redirectToFlow(flowType, options = {}) {
   window.location.href = `${KRATOS_PUBLIC_URL}/self-service/${flowType}/browser${params.toString() ? `?${params}` : ""}`;
 }
 
+function normalizeFlowParams(initParams = {}) {
+  if (initParams instanceof URLSearchParams) {
+    return initParams;
+  }
+
+  const params = new URLSearchParams();
+  Object.entries(initParams).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    params.set(key, value);
+  });
+  return params;
+}
+
+async function initApiFlow(flowType, initParams = {}) {
+  const url = new URL(`/self-service/${flowType}/api`, KRATOS_PUBLIC_URL);
+  const params = normalizeFlowParams(initParams);
+  params.forEach((value, key) => {
+    url.searchParams.set(key, value);
+  });
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json"
+    }
+  });
+
+  if (response.ok) {
+    return response.json();
+  }
+
+  const error = new Error("Failed to initialize flow");
+  error.status = response.status;
+  try {
+    error.data = await response.json();
+  } catch (e) {
+    error.data = null;
+  }
+  throw error;
+}
+
+async function submitFlow(flowType, flowId, payload = {}, options = {}) {
+  const url = options.action
+    ? new URL(options.action, KRATOS_PUBLIC_URL)
+    : new URL(`/self-service/${flowType}`, KRATOS_PUBLIC_URL);
+
+  if (!options.action && flowId) {
+    url.searchParams.set("flow", flowId);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (e) {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const error = new Error("Flow submission failed");
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+}
+
 function buildAppblocksUrl(path, params = {}) {
   const url = new URL(path, APPBLOCKS_BACKEND_BASE_URL);
   Object.entries(params).forEach(([key, value]) => {
@@ -196,16 +280,21 @@ function renderFlowForm(container, flow, submitLabel) {
   });
 
   container.appendChild(form);
+  return form;
 }
 
-function handleFlowError(flowType, error, messageTarget) {
+function handleFlowError(flowType, error, messageTarget, onReset) {
   if (!error || typeof error.status !== "number") {
     renderMessages(messageTarget, [{ text: "Unexpected error, please try again." }]);
     return;
   }
 
   if ([403, 404, 410, 422].includes(error.status)) {
-    redirectToFlow(flowType);
+    if (typeof onReset === "function") {
+      onReset(error);
+    } else {
+      redirectToFlow(flowType);
+    }
     return;
   }
 
@@ -265,5 +354,7 @@ window.KratosHelpers = {
   handleFlowError,
   fetchSession,
   getLogoutUrl,
-  buildAppblocksUrl
+  buildAppblocksUrl,
+  initApiFlow,
+  submitFlow
 };

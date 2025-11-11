@@ -1,20 +1,145 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const { getSearchParam, fetchFlow, renderFlowForm, handleFlowError, redirectToFlow, renderMessages } = window.KratosHelpers;
+document.addEventListener("DOMContentLoaded", () => {
+  const {
+    getSearchParam,
+    fetchFlow,
+    renderFlowForm,
+    handleFlowError,
+    renderMessages,
+    initApiFlow,
+    submitFlow
+  } = window.KratosHelpers;
 
-  const flowId = getSearchParam("flow");
   const formContainer = document.getElementById("form-container");
   const alertContainer = document.getElementById("flow-alerts");
 
-  if (!flowId) {
-    redirectToFlow("login");
-    return;
+  let activeFlow = null;
+  const initialSearch = new URLSearchParams(window.location.search);
+
+  function updateUrlWithFlow(flowId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("flow", flowId);
+    window.history.replaceState({}, "", `${url.pathname}?${url.searchParams}`);
   }
 
-  try {
-    const flow = await fetchFlow("login", flowId);
+  function restoreSubmitButton(button, originalText) {
+    if (!button) return;
+    if (!document.body.contains(button)) return;
+    button.disabled = false;
+    if (originalText !== undefined) {
+      button.textContent = originalText;
+    }
+  }
+
+  function serializeForm(form) {
+    const formData = new FormData(form);
+    const result = {};
+    formData.forEach((value, key) => {
+      if (key in result) {
+        if (Array.isArray(result[key])) {
+          result[key].push(value);
+        } else {
+          result[key] = [result[key], value];
+        }
+      } else {
+        result[key] = value;
+      }
+    });
+    return result;
+  }
+
+  function handleSuccessfulSubmission(result = {}) {
+    const redirectTarget =
+      result.redirect_browser_to ||
+      activeFlow?.return_to ||
+      getSearchParam("return_to") ||
+      "/";
+
+    window.location.href = redirectTarget;
+  }
+
+  function renderFlow(flow) {
+    if (!flow) {
+      return;
+    }
+
+    activeFlow = flow;
+    if (flow.id) {
+      updateUrlWithFlow(flow.id);
+    }
+
     renderMessages(alertContainer, flow.ui?.messages ?? [], "danger");
-    renderFlowForm(formContainer, flow, "Sign in");
-  } catch (error) {
-    handleFlowError("login", error, alertContainer);
+    const form = renderFlowForm(formContainer, flow, "Sign in");
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!activeFlow) {
+        return;
+      }
+
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalLabel = submitButton?.textContent;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Signing in...";
+      }
+
+      try {
+        const payload = serializeForm(form);
+        const result = await submitFlow("login", activeFlow.id, payload, {
+          action: activeFlow.ui?.action
+        });
+
+        if (result?.ui) {
+          renderFlow(result);
+          return;
+        }
+
+        handleSuccessfulSubmission(result);
+      } catch (error) {
+        if (error?.data?.ui) {
+          renderFlow(error.data);
+          return;
+        }
+
+        handleFlowError("login", error, alertContainer, initializeFlow);
+      } finally {
+        restoreSubmitButton(submitButton, originalLabel);
+      }
+    });
+  }
+
+  async function loadExistingFlow(flowId) {
+    try {
+      const flow = await fetchFlow("login", flowId);
+      renderFlow(flow);
+    } catch (error) {
+      handleFlowError("login", error, alertContainer, initializeFlow);
+    }
+  }
+
+  async function initializeFlow() {
+    const params = new URLSearchParams(initialSearch);
+    params.delete("flow");
+
+    try {
+      const flow = await initApiFlow("login", params);
+      renderFlow(flow);
+    } catch (error) {
+      if (error?.data?.ui) {
+        renderFlow(error.data);
+        return;
+      }
+      handleFlowError("login", error, alertContainer, initializeFlow);
+    }
+  }
+
+  const existingFlowId = initialSearch.get("flow");
+  if (existingFlowId) {
+    loadExistingFlow(existingFlowId);
+  } else {
+    initializeFlow();
   }
 });
