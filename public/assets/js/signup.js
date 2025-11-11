@@ -81,13 +81,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const submitButton = form.querySelector('button[type="submit"]');
       const originalLabel = submitButton?.textContent;
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = "Creating account...";
-      }
-
       try {
         const payload = serializeForm(form);
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = "Creating account...";
+        }
         const result = await submitFlow("registration", activeFlow.id, payload, {
           action: activeFlow.ui?.action
         });
