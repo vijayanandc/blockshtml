@@ -4,7 +4,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderMessages,
     getLogoutUrl,
     buildAppblocksUrl,
-    getSessionToken
+    getSessionToken,
+    applySessionToken,
+    normalizeHeaders
   } = window.KratosHelpers;
 
   const sessionContainer = document.getElementById("session-content");
@@ -196,23 +198,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     const url = buildAppblocksUrl(path, params);
     const fetchOptions = {
       method,
-      headers: {
-        Accept: "application/json",
-        ...headers
-      },
+      headers: normalizeHeaders({ Accept: "application/json" }),
       ...rest
     };
 
+    const providedHeaders = normalizeHeaders(headers);
+    providedHeaders.forEach((value, key) => {
+      fetchOptions.headers.set(key, value);
+    });
+
     const sessionToken = typeof getSessionToken === "function" ? getSessionToken() : null;
 
-    if (sessionToken && !fetchOptions.headers["X-Session-Token"]) {
-      fetchOptions.headers["X-Session-Token"] = sessionToken;
+    if (sessionToken) {
+      fetchOptions.headers = applySessionToken(fetchOptions.headers);
     }
 
     if (body !== undefined) {
       fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
-      if (!fetchOptions.headers["Content-Type"]) {
-        fetchOptions.headers["Content-Type"] = "application/json";
+      if (!fetchOptions.headers.has("Content-Type")) {
+        fetchOptions.headers.set("Content-Type", "application/json");
       }
     }
 

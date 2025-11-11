@@ -154,6 +154,43 @@ async function initApiFlow(flowType, initParams = {}) {
   throw error;
 }
 
+function normalizeHeaders(headersLike = {}) {
+  if (headersLike instanceof Headers) {
+    return new Headers(headersLike);
+  }
+
+  if (Array.isArray(headersLike)) {
+    return new Headers(headersLike);
+  }
+
+  const headers = new Headers();
+  if (headersLike && typeof headersLike === "object") {
+    Object.entries(headersLike).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        headers.set(key, value);
+      }
+    });
+  }
+  return headers;
+}
+
+function applySessionToken(headers) {
+  const sessionToken = getSessionToken();
+  if (!sessionToken) {
+    return headers;
+  }
+
+  if (!headers.has("X-Session-Token")) {
+    headers.set("X-Session-Token", sessionToken);
+  }
+
+  if (!headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
+  }
+
+  return headers;
+}
+
 async function submitFlow(flowType, flowId, payload = {}, options = {}) {
   const url = options.action
     ? new URL(options.action, KRATOS_PUBLIC_URL)
@@ -166,10 +203,12 @@ async function submitFlow(flowType, flowId, payload = {}, options = {}) {
   const response = await fetch(url, {
     method: "POST",
     credentials: "include",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
+    headers: applySessionToken(
+      normalizeHeaders({
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      })
+    ),
     body: JSON.stringify(payload)
   });
 
@@ -208,6 +247,10 @@ async function submitFlow(flowType, flowId, payload = {}, options = {}) {
     }
   }
 
+  if (data && typeof data === "object" && data.session_token) {
+    persistSessionToken(data.session_token);
+  }
+
   return data;
 }
 
@@ -228,9 +271,11 @@ async function fetchFlow(flowType, flowId) {
 
   const response = await fetch(url, {
     credentials: "include",
-    headers: {
-      Accept: "application/json"
-    }
+    headers: applySessionToken(
+      normalizeHeaders({
+        Accept: "application/json"
+      })
+    )
   });
 
   if (response.ok) {
@@ -412,13 +457,13 @@ function handleFlowError(flowType, error, messageTarget, onReset) {
 async function fetchSession() {
   const url = new URL("/sessions/whoami", KRATOS_PUBLIC_URL);
   const sessionToken = getSessionToken();
-  const headers = {
-    Accept: "application/json"
-  };
+  let headers = normalizeHeaders({ Accept: "application/json" });
 
   if (sessionToken) {
-    headers["X-Session-Token"] = sessionToken;
+    headers.set("X-Session-Token", sessionToken);
   }
+
+  headers = applySessionToken(headers);
 
   const response = await fetch(url, {
     credentials: "include",
@@ -449,6 +494,10 @@ async function fetchSession() {
 
   if (refreshedToken) {
     persistSessionToken(refreshedToken);
+  }
+
+  if (data && typeof data === "object" && data.session_token) {
+    persistSessionToken(data.session_token);
   }
 
   return data;
@@ -490,5 +539,7 @@ window.KratosHelpers = {
   submitFlow,
   persistSessionToken,
   getSessionToken,
-  clearSessionToken
+  clearSessionToken,
+  applySessionToken,
+  normalizeHeaders
 };
