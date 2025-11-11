@@ -173,7 +173,12 @@ async function submitFlow(flowType, flowId, payload = {}, options = {}) {
     body: JSON.stringify(payload)
   });
 
+  const sessionTokenHeader = response.headers.get("X-Session-Token");
+
   if (response.status === 204) {
+    if (sessionTokenHeader) {
+      return { session_token: sessionTokenHeader };
+    }
     return null;
   }
 
@@ -189,6 +194,14 @@ async function submitFlow(flowType, flowId, payload = {}, options = {}) {
     error.status = response.status;
     error.data = data;
     throw error;
+  }
+
+  if (sessionTokenHeader) {
+    if (data && typeof data === "object" && !data.session_token) {
+      data.session_token = sessionTokenHeader;
+    } else if (!data) {
+      return { session_token: sessionTokenHeader };
+    }
   }
 
   return data;
@@ -399,9 +412,16 @@ async function fetchSession() {
     credentials: "include",
     headers: {
       Accept: "application/json",
-      ...(sessionToken ? { "X-Session-Token": sessionToken } : {})
+      ...(sessionToken
+        ? {
+            "X-Session-Token": sessionToken,
+            Authorization: `Bearer ${sessionToken}`
+          }
+        : {})
     }
   });
+
+  const refreshedToken = response.headers.get("X-Session-Token");
 
   if (response.status === 401) {
     if (sessionToken) {
@@ -416,7 +436,18 @@ async function fetchSession() {
     throw error;
   }
 
-  return response.json();
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+
+  if (refreshedToken) {
+    persistSessionToken(refreshedToken);
+  }
+
+  return data;
 }
 
 async function getLogoutUrl() {
