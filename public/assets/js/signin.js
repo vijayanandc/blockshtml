@@ -30,8 +30,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function serializeForm(form) {
-    const formData = new FormData(form);
+  function serializeForm(form, submitter) {
+    let formData;
+    try {
+      formData = submitter ? new FormData(form, submitter) : new FormData(form);
+    } catch (error) {
+      formData = new FormData(form);
+      if (submitter?.name) {
+        formData.append(submitter.name, submitter.value ?? "");
+      }
+    }
     const result = {};
     formData.forEach((value, key) => {
       if (key in result) {
@@ -79,10 +87,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const submitButton = form.querySelector('button[type="submit"]');
+      const submitButton = event.submitter || form.querySelector('button[type="submit"]');
       const originalLabel = submitButton?.textContent;
       try {
-        const payload = serializeForm(form);
+        const payload = serializeForm(form, submitButton);
+
+        if (submitButton?.name && !(submitButton.name in payload)) {
+          payload[submitButton.name] = submitButton.value ?? "";
+        }
 
         if (submitButton) {
           submitButton.disabled = true;
