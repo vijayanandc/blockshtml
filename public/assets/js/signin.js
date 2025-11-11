@@ -6,7 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
     handleFlowError,
     renderMessages,
     initApiFlow,
-    submitFlow
+    submitFlow,
+    persistSessionToken
   } = window.KratosHelpers;
 
   const formContainer = document.getElementById("form-container");
@@ -56,6 +57,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleSuccessfulSubmission(result = {}) {
+    if (result?.session_token) {
+      persistSessionToken(result.session_token);
+    }
+
     const redirectTarget =
       result.redirect_browser_to ||
       activeFlow?.return_to ||

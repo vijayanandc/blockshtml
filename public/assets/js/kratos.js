@@ -11,6 +11,96 @@ const APPBLOCKS_ACCOUNTS_BASE_URL =
 const KRATOS_PUBLIC_URL =
   (typeof window !== "undefined" && window.KRATOS_PUBLIC_URL) || APPBLOCKS_ACCOUNTS_BASE_URL;
 
+const SESSION_TOKEN_STORAGE_KEY = "kratos_session_token";
+let inMemorySessionToken = null;
+
+function persistSessionToken(token) {
+  if (typeof window === "undefined") {
+    inMemorySessionToken = token ?? null;
+    return;
+  }
+
+  if (!token) {
+    clearSessionToken();
+    return;
+  }
+
+  inMemorySessionToken = token;
+
+  try {
+    if (window.sessionStorage) {
+      window.sessionStorage.setItem(SESSION_TOKEN_STORAGE_KEY, token);
+    }
+  } catch (error) {
+    // Ignore storage write failures (e.g. privacy mode)
+  }
+
+  try {
+    if (window.localStorage) {
+      window.localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, token);
+    }
+  } catch (error) {
+    // Ignore storage write failures (e.g. storage disabled)
+  }
+}
+
+function getSessionToken() {
+  if (inMemorySessionToken) {
+    return inMemorySessionToken;
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  let token = null;
+
+  try {
+    if (window.sessionStorage) {
+      token = window.sessionStorage.getItem(SESSION_TOKEN_STORAGE_KEY);
+    }
+  } catch (error) {
+    token = null;
+  }
+
+  if (!token) {
+    try {
+      if (window.localStorage) {
+        token = window.localStorage.getItem(SESSION_TOKEN_STORAGE_KEY);
+      }
+    } catch (error) {
+      token = null;
+    }
+  }
+
+  inMemorySessionToken = token;
+  return token;
+}
+
+function clearSessionToken() {
+  inMemorySessionToken = null;
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (window.sessionStorage) {
+      window.sessionStorage.removeItem(SESSION_TOKEN_STORAGE_KEY);
+    }
+  } catch (error) {
+    // Ignore storage access issues
+  }
+
+  try {
+    if (window.localStorage) {
+      window.localStorage.removeItem(SESSION_TOKEN_STORAGE_KEY);
+    }
+  } catch (error) {
+    // Ignore storage access issues
+  }
+}
+
 function getSearchParam(name) {
   return new URL(window.location.href).searchParams.get(name);
 }
@@ -304,14 +394,19 @@ function handleFlowError(flowType, error, messageTarget, onReset) {
 
 async function fetchSession() {
   const url = new URL("/sessions/whoami", KRATOS_PUBLIC_URL);
+  const sessionToken = getSessionToken();
   const response = await fetch(url, {
     credentials: "include",
     headers: {
-      Accept: "application/json"
+      Accept: "application/json",
+      ...(sessionToken ? { "X-Session-Token": sessionToken } : {})
     }
   });
 
   if (response.status === 401) {
+    if (sessionToken) {
+      clearSessionToken();
+    }
     return null;
   }
 
@@ -338,6 +433,7 @@ async function getLogoutUrl() {
   }
 
   const data = await response.json();
+  clearSessionToken();
   return data.logout_url;
 }
 
@@ -356,5 +452,8 @@ window.KratosHelpers = {
   getLogoutUrl,
   buildAppblocksUrl,
   initApiFlow,
-  submitFlow
+  submitFlow,
+  persistSessionToken,
+  getSessionToken,
+  clearSessionToken
 };
