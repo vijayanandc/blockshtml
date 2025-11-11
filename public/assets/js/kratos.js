@@ -504,7 +504,7 @@ async function fetchSession() {
 }
 
 async function getLogoutUrl() {
-  const url = new URL("/self-service/logout/browser", KRATOS_PUBLIC_URL);
+  const url = new URL("/self-service/logout/api", KRATOS_PUBLIC_URL);
   let headers = normalizeHeaders({ Accept: "application/json" });
   headers = applySessionToken(headers);
 
@@ -515,7 +515,19 @@ async function getLogoutUrl() {
 
   const sessionTokenHeader = response.headers.get("X-Session-Token");
 
+  if (sessionTokenHeader) {
+    persistSessionToken(sessionTokenHeader);
+  }
+
   if (response.status === 401) {
+    clearSessionToken();
+    if (typeof window !== "undefined") {
+      return "/signin";
+    }
+    return null;
+  }
+
+  if (response.status === 204) {
     clearSessionToken();
     if (typeof window !== "undefined") {
       return "/signin";
@@ -527,10 +539,6 @@ async function getLogoutUrl() {
     const error = new Error("Unable to fetch logout URL");
     error.status = response.status;
     throw error;
-  }
-
-  if (sessionTokenHeader) {
-    persistSessionToken(sessionTokenHeader);
   }
 
   let data = null;
@@ -546,9 +554,59 @@ async function getLogoutUrl() {
       ? `${KRATOS_PUBLIC_URL}/self-service/logout?token=${encodeURIComponent(data.logout_token)}`
       : null);
 
+  if (!logoutUrl) {
+    clearSessionToken();
+    if (typeof window !== "undefined") {
+      return "/signin";
+    }
+    return null;
+  }
+
+  let redirectTarget = data?.return_to || "/signin";
+
+  const logoutResponse = await fetch(logoutUrl, {
+    method: "GET",
+    credentials: "include",
+    headers: applySessionToken(normalizeHeaders()),
+    redirect: "manual"
+  });
+
+  if (logoutResponse.type === "opaqueredirect") {
+    clearSessionToken();
+    return redirectTarget || "/signin";
+  }
+
+  const logoutSessionToken = logoutResponse.headers.get("X-Session-Token");
+
+  if (logoutSessionToken) {
+    persistSessionToken(logoutSessionToken);
+  }
+
+  if ([401, 403].includes(logoutResponse.status)) {
+    clearSessionToken();
+    if (typeof window !== "undefined") {
+      return "/signin";
+    }
+    return null;
+  }
+
+  if ([302, 303, 307, 308].includes(logoutResponse.status)) {
+    redirectTarget = logoutResponse.headers.get("Location") || redirectTarget;
+  } else if (logoutResponse.ok || logoutResponse.status === 204) {
+    redirectTarget = redirectTarget || "/signin";
+  } else {
+    const error = new Error("Logout confirmation failed");
+    error.status = logoutResponse.status;
+    throw error;
+  }
+
   clearSessionToken();
 
-  return logoutUrl || `${KRATOS_PUBLIC_URL}/self-service/logout/browser`;
+  if (typeof window !== "undefined" && redirectTarget.startsWith("/")) {
+    return redirectTarget;
+  }
+
+  return redirectTarget || "/signin";
 }
 
 window.KratosHelpers = {

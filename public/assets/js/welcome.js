@@ -160,8 +160,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         logoutButton.disabled = true;
         logoutButton.textContent = "Logging out...";
         try {
-          const logoutUrl = await getLogoutUrl();
-          window.location.href = logoutUrl;
+          const redirectTarget = await getLogoutUrl();
+          window.location.href = redirectTarget || "/signin";
         } catch (error) {
           renderMessages(alerts, [{ text: "Unable to log out. Please try again." }], "warning");
           logoutButton.disabled = false;
