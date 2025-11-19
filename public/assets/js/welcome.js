@@ -190,6 +190,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const url = buildAppblocksUrl(path, params);
     const fetchOptions = {
       method,
+      credentials: options.credentials ?? 'include',
       headers: {
         Accept: "application/json",
         ...headers
@@ -549,14 +550,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     moduleList.forEach((module) => {
+      const apiName = module.module_api_name ?? module.api_name;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "list-group-item list-group-item-action py-3 text-start";
-      button.dataset.apiName = module.api_name;
+      button.dataset.apiName = apiName;
       button.innerHTML = `
         <div class="d-flex flex-column">
           <span class="fw-semibold">${module.name}</span>
-          <small class="text-muted">${module.api_name}</small>
+          <small class="text-muted">${apiName}</small>
         </div>
       `;
       button.addEventListener("click", () => {
@@ -599,20 +601,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!module || !moduleDataElement || !moduleTitleElement || !moduleSubtitleElement) {
       return;
     }
+
+    const apiName = module.module_api_name ?? module.api_name;
+    if (!apiName) {
+      handleAppblocksError(
+        new Error("Module is missing an API name."),
+        "Unable to load module data."
+      );
+      return;
+    }
+
     clearAlerts();
-    setActiveModuleButton(module.api_name);
+    setActiveModuleButton(apiName);
     moduleTitleElement.textContent = module.name;
-    moduleSubtitleElement.textContent = `API: ${module.api_name}`;
+    moduleSubtitleElement.textContent = `API: ${apiName}`;
     moduleDataElement.innerHTML = createInlineSpinner("Loading data...");
 
     try {
-      const endpoint = `/api/${encodeURIComponent(module.api_name)}`;
+      const endpoint = `/api/${encodeURIComponent(apiName)}`;
       const records = await fetchAppblocks(endpoint, {
         headers: { "X-Org-ID": selectedOrg.org_id },
         params: { limit: 50, offset: 0 }
       });
       const countLabel = `${records?.length ?? 0} ${records?.length === 1 ? "record" : "records"}`;
-      moduleSubtitleElement.textContent = `API: ${module.api_name} · ${countLabel}`;
+      moduleSubtitleElement.textContent = `API: ${apiName} · ${countLabel}`;
       renderModuleData(records);
     } catch (error) {
       handleAppblocksError(error, `Unable to load ${module.name} data.`);
