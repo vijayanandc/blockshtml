@@ -24,6 +24,11 @@
   window.HYDRA_OAUTH_REDIRECT_URI =
     window.HYDRA_OAUTH_REDIRECT_URI || window.location.origin + "/";
 
+  // Admin endpoint for handling Hydra login challenges. Falls back to replacing
+  // the typical public port (4444) with the admin port (4445).
+  window.HYDRA_ADMIN_URL =
+    window.HYDRA_ADMIN_URL || window.HYDRA_PUBLIC_URL?.replace(":4444", ":4445");
+
   // Maintain legacy globals for compatibility if they are not explicitly set.
   if (!window.APPBLOCKS_BASE_URL) {
     window.APPBLOCKS_BASE_URL = window.APPBLOCKS_BACKEND_BASE_URL;

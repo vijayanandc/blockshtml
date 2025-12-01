@@ -14,6 +14,9 @@ const KRATOS_PUBLIC_URL =
 const HYDRA_PUBLIC_URL =
   (typeof window !== "undefined" && window.HYDRA_PUBLIC_URL) || "https://hydra.appblocks.in";
 
+const HYDRA_ADMIN_URL =
+  (typeof window !== "undefined" && window.HYDRA_ADMIN_URL) || HYDRA_PUBLIC_URL?.replace(":4444", ":4445");
+
 const HYDRA_OAUTH_CLIENT_ID =
   (typeof window !== "undefined" && window.HYDRA_OAUTH_CLIENT_ID) || "appblocks-public-client";
 
@@ -239,6 +242,43 @@ async function startHydraLogin(additionalParams = {}) {
   });
 
   window.location.href = `${HYDRA_PUBLIC_URL}/oauth2/auth?${params}`;
+}
+
+async function getHydraLoginRequest(loginChallenge) {
+  if (!loginChallenge || !HYDRA_ADMIN_URL) return null;
+  const url = new URL(`/oauth2/auth/requests/login`, HYDRA_ADMIN_URL);
+  url.searchParams.set("login_challenge", loginChallenge);
+
+  const response = await fetch(url, { credentials: "omit" });
+  if (!response.ok) {
+    throw new Error("Unable to fetch login challenge");
+  }
+
+  return response.json();
+}
+
+async function acceptHydraLoginRequest(loginChallenge, subject, remember = true) {
+  if (!loginChallenge || !HYDRA_ADMIN_URL) return null;
+
+  const url = new URL(`/oauth2/auth/requests/login/accept`, HYDRA_ADMIN_URL);
+  url.searchParams.set("login_challenge", loginChallenge);
+
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "omit",
+    body: JSON.stringify({
+      subject,
+      remember,
+      remember_for: 3600
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to continue login challenge");
+  }
+
+  return response.json();
 }
 
 async function fetchUserInfo(accessToken) {
@@ -519,6 +559,8 @@ window.KratosHelpers = {
   buildAppblocksUrl,
   startHydraLogin,
   handleOAuthCallback,
+  getHydraLoginRequest,
+  acceptHydraLoginRequest,
   getAccessToken,
   fetchUserInfo,
   clearStoredTokens
