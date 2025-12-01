@@ -1,20 +1,20 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const { getSearchParam, fetchFlow, renderFlowForm, handleFlowError, redirectToFlow, renderMessages } = window.KratosHelpers;
+  const { startHydraLogin, handleOAuthCallback, renderMessages } = window.KratosHelpers;
 
-  const flowId = getSearchParam("flow");
-  const formContainer = document.getElementById("form-container");
   const alertContainer = document.getElementById("flow-alerts");
-
-  if (!flowId) {
-    redirectToFlow("login");
-    return;
-  }
+  const signInButton = document.getElementById("oauth-signin-btn");
 
   try {
-    const flow = await fetchFlow("login", flowId);
-    renderMessages(alertContainer, flow.ui?.messages ?? [], "danger");
-    renderFlowForm(formContainer, flow, "Sign in");
+    const handled = await handleOAuthCallback();
+    if (handled) {
+      window.location.href = "/";
+      return;
+    }
   } catch (error) {
-    handleFlowError("login", error, alertContainer);
+    renderMessages(alertContainer, [{ text: error.message || "Unable to complete sign-in." }], "warning");
+  }
+
+  if (signInButton) {
+    signInButton.addEventListener("click", () => startHydraLogin());
   }
 });

@@ -1,5 +1,14 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const { fetchSession, renderMessages, getLogoutUrl, buildAppblocksUrl } = window.KratosHelpers;
+  const {
+    renderMessages,
+    buildAppblocksUrl,
+    startHydraLogin,
+    handleOAuthCallback,
+    getAccessToken,
+    fetchUserInfo,
+    clearStoredTokens,
+    getLogoutUrl
+  } = window.KratosHelpers;
 
   const sessionContainer = document.getElementById("session-content");
   const alerts = document.getElementById("session-alerts");
@@ -61,6 +70,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     sessionContainer.classList.toggle("modules-page-content", Boolean(isActive));
   }
 
+  function wireOAuthLinks(container) {
+    if (!container) return;
+    container.querySelectorAll("[data-oauth-login]").forEach((element) => {
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        startHydraLogin();
+      });
+    });
+  }
+
   function setNavbarOrgName(name = DEFAULT_BRAND_NAME) {
     if (!navbarBrand) return;
     navbarBrand.textContent = name || DEFAULT_BRAND_NAME;
@@ -103,19 +122,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         <h1 class="display-6 fw-semibold mb-3">Welcome!</h1>
         <p class="text-muted mb-4">Sign in or create an account to continue.</p>
         <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
-          <a class="btn btn-primary btn-lg" href="/signin">Sign in</a>
+          <a class="btn btn-primary btn-lg" href="/signin" data-oauth-login="true">Sign in</a>
           <a class="btn btn-outline-secondary btn-lg" href="/signup">Create account</a>
         </div>
       </div>
     `;
 
+    wireOAuthLinks(sessionContainer);
+
     if (navbarLinks) {
       navbarLinks.innerHTML = `
-        <li class="nav-item"><a class="nav-link" href="/signin">Sign In</a></li>
+        <li class="nav-item"><a class="nav-link" href="/signin" data-oauth-login="true">Sign In</a></li>
         <li class="nav-item"><a class="nav-link" href="/signup">Create account</a></li>
       `;
       changeOrgMenuButton = null;
       logoutButton = null;
+      wireOAuthLinks(navbarLinks);
     }
   }
 
@@ -152,8 +174,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         logoutButton.disabled = true;
         logoutButton.textContent = "Logging out...";
         try {
+          clearStoredTokens();
           const logoutUrl = await getLogoutUrl();
-          window.location.href = logoutUrl;
+          if (logoutUrl) {
+            window.location.href = logoutUrl;
+            return;
+          }
+          window.location.href = "/signin";
         } catch (error) {
           renderMessages(alerts, [{ text: "Unable to log out. Please try again." }], "warning");
           logoutButton.disabled = false;
@@ -188,11 +215,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function fetchAppblocks(path, options = {}) {
     const { headers = {}, params, method = "GET", body, ...rest } = options;
     const url = buildAppblocksUrl(path, params);
+    const accessToken = await getAccessToken();
+
+    if (!accessToken) {
+      const error = new Error("Not authenticated");
+      error.status = 401;
+      throw error;
+    }
+
     const fetchOptions = {
       method,
-      credentials: options.credentials ?? 'include',
       headers: {
         Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
         ...headers
       },
       ...rest
@@ -223,6 +258,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function handleAppblocksError(error, fallbackMessage, variant = "warning") {
     console.error(error);
+    if (error?.status === 401) {
+      clearStoredTokens();
+      showLoggedOut();
+      renderMessages(alerts, [{ text: "Your session has expired. Please sign in again." }], "warning");
+      return;
+    }
     const detail = error?.body?.detail || error?.body?.message;
     const parts = [fallbackMessage];
     if (detail) {
@@ -713,20 +754,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    const session = await fetchSession();
+    await handleOAuthCallback();
+  } catch (error) {
+    showLoggedOut();
+    renderMessages(alerts, [{ text: error.message || "Unable to complete sign-in." }], "warning");
+    return;
+  }
 
-    if (!session) {
+  try {
+    const accessToken = await getAccessToken();
+
+    if (!accessToken) {
       showLoggedOut();
       return;
     }
 
-    const identity = session.identity ?? {};
-    const traits = identity.traits ?? {};
-    const email = traits.email ?? "Signed in";
+    const profile = await fetchUserInfo(accessToken);
+
+    if (!profile) {
+      showLoggedOut();
+      renderMessages(alerts, [{ text: "Please sign in to continue." }], "warning");
+      return;
+    }
+
+    const email = profile.email || profile.preferred_username || profile.sub || "Signed in";
 
     setNavbarForUser(email);
     await loadOrganizations();
   } catch (error) {
+    if (error?.status === 401) {
+      clearStoredTokens();
+    }
     showLoggedOut();
     renderMessages(alerts, [{ text: "We couldn't check your session. Please try again." }], "warning");
   }
