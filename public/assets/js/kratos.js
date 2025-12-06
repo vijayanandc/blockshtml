@@ -257,6 +257,20 @@ async function getHydraLoginRequest(loginChallenge) {
   return response.json();
 }
 
+async function getHydraConsentRequest(consentChallenge) {
+  if (!consentChallenge || !HYDRA_ADMIN_URL) return null;
+
+  const url = new URL(`/oauth2/auth/requests/consent`, HYDRA_ADMIN_URL);
+  url.searchParams.set("consent_challenge", consentChallenge);
+
+  const response = await fetch(url, { credentials: "omit" });
+  if (!response.ok) {
+    throw new Error("Unable to fetch consent challenge");
+  }
+
+  return response.json();
+}
+
 async function acceptHydraLoginRequest(loginChallenge, subject, remember = true) {
   if (!loginChallenge || !HYDRA_ADMIN_URL) return null;
 
@@ -276,6 +290,37 @@ async function acceptHydraLoginRequest(loginChallenge, subject, remember = true)
 
   if (!response.ok) {
     throw new Error("Unable to continue login challenge");
+  }
+
+  return response.json();
+}
+
+async function acceptHydraConsentRequest(consentChallenge, consentRequest, remember = false) {
+  if (!consentChallenge || !HYDRA_ADMIN_URL) return null;
+
+  const url = new URL(`/oauth2/auth/requests/consent/accept`, HYDRA_ADMIN_URL);
+  url.searchParams.set("consent_challenge", consentChallenge);
+
+  const body = {
+    grant_scope: consentRequest?.requested_scope ?? [],
+    grant_access_token_audience: consentRequest?.requested_access_token_audience ?? [],
+    remember,
+    remember_for: 0,
+    session: {
+      access_token: {},
+      id_token: {}
+    }
+  };
+
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "omit",
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to continue consent challenge");
   }
 
   return response.json();
@@ -561,6 +606,8 @@ window.KratosHelpers = {
   handleOAuthCallback,
   getHydraLoginRequest,
   acceptHydraLoginRequest,
+  getHydraConsentRequest,
+  acceptHydraConsentRequest,
   getAccessToken,
   fetchUserInfo,
   clearStoredTokens

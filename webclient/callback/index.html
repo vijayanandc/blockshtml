@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>App Blocks Tokens</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+  </head>
+  <body class="bg-body-tertiary">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="/">App Blocks</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto" id="webclient-navbar-right"></ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4 p-md-4">
+              <div class="mb-3" id="callback-alerts"></div>
+
+              <ul class="nav nav-tabs mb-4" id="webclient-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link active"
+                    id="webclient-tab-home"
+                    type="button"
+                    role="tab"
+                    aria-selected="true"
+                  >
+                    Home
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    id="webclient-tab-admin"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                  >
+                    Admin
+                  </button>
+                </li>
+              </ul>
+
+              <div id="webclient-home-pane">
+                <p class="text-muted mb-3">
+                  The current access and refresh tokens for this session are shown below.
+                </p>
+                <div id="tokens-container" class="token-layout"></div>
+              </div>
+
+              <div id="webclient-admin-pane" class="d-none">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h2 class="h6 mb-0">Clients</h2>
+                  <div class="d-flex gap-2">
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      type="button"
+                      id="admin-apply-btn"
+                    >
+                      Refresh
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      type="button"
+                      id="admin-show-create-btn"
+                    >
+                      Create client
+                    </button>
+                  </div>
+                </div>
+                <div id="admin-status" class="form-text text-muted mb-2"></div>
+
+                <div id="admin-clients" class="mb-4"></div>
+
+                <div id="admin-create-container" class="card border-0 shadow-sm d-none">
+                  <div class="card-body p-3 p-md-4">
+                    <h3 class="h6 mb-3">New client</h3>
+                    <form id="admin-create-form" class="d-flex flex-column gap-3">
+                      <div>
+                        <label class="form-label" for="client-name">Name</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-name"
+                          placeholder="App Blocks Web Client"
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-id">Client ID (optional)</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-id"
+                          placeholder="Leave empty to auto-generate"
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-secret">Client secret (optional)</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-secret"
+                          placeholder="Leave empty to auto-generate"
+                          autocomplete="off"
+                        />
+                        <div class="form-text">For confidential clients in development only.</div>
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-redirect-uris">Redirect URIs</label>
+                        <textarea
+                          class="form-control form-control-sm"
+                          id="client-redirect-uris"
+                          rows="2"
+                          placeholder="http://127.0.0.1:7070/callback"
+                        ></textarea>
+                        <div class="form-text">Enter one URL per line.</div>
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-scopes">Scopes</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-scopes"
+                          value="openid offline offline_access profile email"
+                          autocomplete="off"
+                        />
+                        <div class="form-text">Space-separated list.</div>
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-grant-types">Grant types</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-grant-types"
+                          value="authorization_code refresh_token"
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-response-types">Response types</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-response-types"
+                          value="code"
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-audience">Audience (optional)</label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          id="client-audience"
+                          placeholder="Space-separated values"
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label class="form-label" for="client-auth-method">Token auth method</label>
+                        <select id="client-auth-method" class="form-select form-select-sm">
+                          <option value="none" selected>none (public client)</option>
+                          <option value="client_secret_basic">client_secret_basic</option>
+                          <option value="client_secret_post">client_secret_post</option>
+                        </select>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">Create</button>
+                        <button type="button" class="btn btn-link btn-sm" id="admin-create-cancel">
+                          Cancel
+                        </button>
+                      </div>
+                      <div id="admin-create-messages" class="mt-2"></div>
+                    </form>
+                  </div>
+                </div>
+
+                <div id="admin-client-details" class="card border-0 shadow-sm d-none">
+                  <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div>
+                        <h3 class="h6 mb-1" id="admin-client-title"></h3>
+                        <p class="text-muted small mb-0" id="admin-client-id-label"></p>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-link btn-sm"
+                        id="admin-client-back"
+                      >
+                        Back to clients
+                      </button>
+                    </div>
+                    <div id="admin-client-summary" class="meta-grid mb-3"></div>
+                    <div>
+                      <h4 class="small fw-semibold mb-2">Raw details</h4>
+                      <pre class="token-code mb-0" id="admin-client-json"></pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/webclient.js"></script>
+  </body>
+</html>

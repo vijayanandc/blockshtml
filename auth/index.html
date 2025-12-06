@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>App Blocks Auth</title>
+    <meta http-equiv="refresh" content="0;url=/signin" />
+    <script>
+      (function () {
+        var url = new URL(window.location.href);
+        url.pathname = "/signin";
+        window.location.replace(url.toString());
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to <a href="/signin">/signin</a>…</p>
+  </body>
+  </html>
