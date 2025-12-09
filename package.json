@@ -2,7 +2,7 @@
   "name": "blockshtml",
   "version": "1.0.0",
   "private": true,
-  "description": "Bootstrap powered Ory Kratos self-service UI",
+  "description": "Bootstrap powered Logto traditional web UI",
   "scripts": {
     "dev": "serve public -l 3000",
     "start": "serve public -l 3000"

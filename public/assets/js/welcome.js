@@ -1,12 +1,43 @@
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const { fetchSession, renderMessages, getLogoutUrl, buildAppblocksUrl } = window.KratosHelpers;
+  const helpers = window.LogtoHelpers || window.AppBlocksHelpers || window.KratosHelpers;
+
+  if (!helpers) {
+    return;
+  }
+
+  const {
+    fetchSession,
+    renderMessages,
+    buildBackendUrl,
+    getRefreshToken,
+    refreshAccessToken
+  } = helpers;
+  const signOut = helpers.signOut;
+  const acquireAccessToken = helpers.getAccessToken;
+  const SHOW_TOKEN_SECTION = Boolean(window.APPBLOCKS_SHOW_TOKENS);
+  const resolveAccessToken = acquireAccessToken;
+  const resolveFreshAccessToken =
+    typeof refreshAccessToken === "function" ? refreshAccessToken : acquireAccessToken;
+  const resolveRefreshToken =
+    typeof getRefreshToken === "function" ? getRefreshToken : async () => null;
+
+  if (typeof fetchSession !== "function") {
+    console.error("Unable to load session helpers.");
+    return;
+  }
 
   const sessionContainer = document.getElementById("session-content");
   const alerts = document.getElementById("session-alerts");
   const navbarLinks = document.getElementById("navbar-links");
   const navbarBrand = document.getElementById("navbar-brand-label");
 
-  const DEFAULT_BRAND_NAME = navbarBrand?.textContent?.trim() || "Kratos Client";
+  const DEFAULT_BRAND_NAME = navbarBrand?.textContent?.trim() || "AppBlocks Console";
 
   let organizations = [];
   let selectedOrg = null;
@@ -19,6 +50,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   let moduleTitleElement = null;
   let moduleSubtitleElement = null;
   let moduleDataElement = null;
+  let tokenPanelElement = null;
+  let accessTokenField = null;
+  let refreshTokenField = null;
+  let tokenStatusElement = null;
+  let tokenRefreshButton = null;
+  let currentRefreshToken = null;
 
   const TIMEZONE_OPTIONS = [
     { value: "UTC", label: "UTC" },
@@ -30,6 +67,141 @@ document.addEventListener("DOMContentLoaded", async () => {
     { value: "Asia/Singapore", label: "Asia/Singapore (GMT+08:00)" },
     { value: "Australia/Sydney", label: "Australia/Sydney (GMT+10:00)" }
   ];
+
+  function removeTokenPanel() {
+    if (tokenPanelElement && tokenPanelElement.parentElement) {
+      tokenPanelElement.parentElement.removeChild(tokenPanelElement);
+    }
+    tokenPanelElement = null;
+    accessTokenField = null;
+    refreshTokenField = null;
+    tokenStatusElement = null;
+    tokenRefreshButton = null;
+    currentRefreshToken = null;
+  }
+
+  function attachTokenPanel(parent) {
+    if (!SHOW_TOKEN_SECTION || !parent) {
+      return;
+    }
+
+    removeTokenPanel();
+
+    tokenPanelElement = document.createElement("div");
+    tokenPanelElement.className = "card shadow-sm border-0 mt-4 token-panel";
+    tokenPanelElement.innerHTML = `
+      <div class="card-body p-4 p-md-5">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+          <div>
+            <h2 class="h5 fw-semibold mb-1">Prototype tokens</h2>
+            <p class="text-muted mb-0">Use these temporary tokens to call the backend directly.</p>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-tokens">
+            Refresh tokens
+          </button>
+        </div>
+        <div class="token-status text-muted small mb-4"></div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Access token</label>
+          <div class="input-group">
+            <textarea class="form-control form-control-sm" rows="3" readonly data-token-field="access"></textarea>
+            <button class="btn btn-outline-secondary" type="button" data-copy-target="access">Copy</button>
+          </div>
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Refresh token</label>
+          <div class="input-group">
+            <textarea class="form-control form-control-sm" rows="2" readonly data-token-field="refresh"></textarea>
+            <button class="btn btn-outline-secondary" type="button" data-copy-target="refresh">Copy</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    accessTokenField = tokenPanelElement.querySelector('[data-token-field="access"]');
+    refreshTokenField = tokenPanelElement.querySelector('[data-token-field="refresh"]');
+    tokenStatusElement = tokenPanelElement.querySelector(".token-status");
+    tokenRefreshButton = tokenPanelElement.querySelector('[data-action="refresh-tokens"]');
+
+    tokenPanelElement.addEventListener("click", async (event) => {
+      const control = event.target.closest("[data-copy-target]");
+      if (!control) {
+        return;
+      }
+      const target =
+        control.dataset.copyTarget === "access" ? accessTokenField : refreshTokenField;
+      if (!target || !target.value) {
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(target.value);
+        control.textContent = "Copied!";
+        setTimeout(() => {
+          control.textContent = "Copy";
+        }, 1500);
+      } catch (error) {
+        console.warn("Unable to copy token", error);
+      }
+    });
+
+    if (tokenRefreshButton) {
+      tokenRefreshButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        refreshTokenValues(true);
+      });
+    }
+
+    parent.appendChild(tokenPanelElement);
+    refreshTokenValues();
+  }
+
+  async function refreshTokenValues(force = false) {
+    if (!tokenPanelElement) {
+      return;
+    }
+
+    if (tokenStatusElement) {
+      tokenStatusElement.textContent = "Generating tokens...";
+    }
+
+    try {
+      let accessToken;
+      if (force) {
+        accessToken = await resolveFreshAccessToken();
+      } else {
+        accessToken = await resolveAccessToken();
+      }
+
+      let refreshToken = currentRefreshToken;
+      if (!refreshToken || !force) {
+        refreshToken = await resolveRefreshToken();
+        currentRefreshToken = refreshToken;
+      }
+
+      if (accessTokenField) {
+        accessTokenField.value = accessToken || "No access token available.";
+      }
+
+      if (refreshTokenField) {
+        refreshTokenField.value = refreshToken || "No refresh token available.";
+      }
+
+      if (tokenStatusElement) {
+        tokenStatusElement.textContent = "Tokens copied here are for development only.";
+      }
+    } catch (error) {
+      console.error("Unable to fetch tokens for prototype panel.", error);
+      if (tokenStatusElement) {
+        tokenStatusElement.textContent = "Unable to fetch tokens. Please try refreshing.";
+      }
+      if (accessTokenField) {
+        accessTokenField.value = "";
+      }
+      if (refreshTokenField) {
+        refreshTokenField.value = "";
+      }
+    }
+  }
 
   function setModulesPageActive(isActive) {
     document.body.classList.toggle("modules-page-active", Boolean(isActive));
@@ -95,6 +267,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function showLoggedOut() {
     if (!sessionContainer) return;
+    removeTokenPanel();
     selectedOrg = null;
     setNavbarOrgName(DEFAULT_BRAND_NAME);
     setModulesPageActive(false);
@@ -150,14 +323,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       logoutButton.addEventListener("click", async () => {
         hideNavbarDropdown();
         logoutButton.disabled = true;
+        const originalLabel = logoutButton.textContent;
         logoutButton.textContent = "Logging out...";
         try {
-          const logoutUrl = await getLogoutUrl();
-          window.location.href = logoutUrl;
+          if (typeof signOut === "function") {
+            await signOut();
+          } else {
+            window.location.href = "/";
+          }
         } catch (error) {
           renderMessages(alerts, [{ text: "Unable to log out. Please try again." }], "warning");
           logoutButton.disabled = false;
-          logoutButton.textContent = "Log out";
+          logoutButton.textContent = originalLabel || "Log out";
         }
       });
     }
@@ -167,6 +344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderPrimaryLoading(message) {
     if (!sessionContainer) return;
+    removeTokenPanel();
     setModulesPageActive(false);
     sessionContainer.innerHTML = `
       <div class="d-flex flex-column align-items-center justify-content-center py-5 gap-3">
@@ -186,17 +364,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function fetchAppblocks(path, options = {}) {
-    const { headers = {}, params, method = "GET", body, ...rest } = options;
-    const url = buildAppblocksUrl(path, params);
+    const { headers = {}, params, method = "GET", body, useAccessToken = true, ...rest } = options;
+    const url = buildBackendUrl(path, params);
     const fetchOptions = {
       method,
-      credentials: options.credentials ?? 'include',
+      credentials: options.credentials ?? "include",
       headers: {
         Accept: "application/json",
         ...headers
       },
       ...rest
     };
+
+    if (useAccessToken && typeof acquireAccessToken === "function") {
+      try {
+        const token = await acquireAccessToken();
+        if (token) {
+          fetchOptions.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.warn("Unable to retrieve access token for AppBlocks APIs.", error);
+      }
+    }
 
     if (body !== undefined) {
       fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
@@ -299,6 +488,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
     `;
 
+    attachTokenPanel(sessionContainer);
+
     const form = document.getElementById("org-creation-form");
     const nameInput = document.getElementById("org-name");
     const timezoneSelect = document.getElementById("org-timezone");
@@ -395,6 +586,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
     `;
 
+    attachTokenPanel(sessionContainer);
+
     const form = document.getElementById("org-selection-form");
     const select = document.getElementById("org-select");
 
@@ -463,6 +656,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderAppShell(org, moduleList) {
     if (!sessionContainer) return;
+    removeTokenPanel();
     setNavbarOrgName(org.org_name);
     updateChangeOrgMenuState(true);
     setModulesPageActive(true);

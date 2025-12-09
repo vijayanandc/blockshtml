@@ -1,5 +1,5 @@
 :root {
-  --kratos-primary: #0d6efd;
+  --logto-primary: #0d6efd;
 }
 
 body {
@@ -55,7 +55,7 @@ main {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--kratos-primary), #4f46e5);
+  background: linear-gradient(135deg, var(--logto-primary), #4f46e5);
   border: none;
 }
 
