@@ -1,7 +1,7 @@
 // Central configuration for AppBlocks API requests.
 // Update these URLs to point to the desired servers.
 (function configureAppblocksEndpoints() {
-  const DEFAULT_BACKEND_URL = "http://127.0.0.1:8080";
+  const DEFAULT_BACKEND_URL = "https://dev.appblocks.in";
   const DEFAULT_ACCOUNTS_URL = "https://5dffq2.logto.app";
 
   window.APPBLOCKS_BACKEND_BASE_URL =
